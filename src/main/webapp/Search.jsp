@@ -1,167 +1,226 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@ page import="java.util.List" %>
-<%@ page import="java.util.ArrayList" %>
-<%@ page import="com.dto.KinDTO" %>
-<%@ page import="com.service.NaverService" %>
+<%@ page import="java.net.*, java.io.*, java.util.*" %>
+<%@ page import="com.google.gson.*" %>
 
-<%
-    request.setCharacterEncoding("UTF-8");
-    String keyword = request.getParameter("keyword");
-    String sort = request.getParameter("sort");
-
-    if(sort == null || sort.equals("")) sort = "sim"; 
-
-    List<KinDTO> list = new ArrayList<>();
-    
-    if(keyword != null && !keyword.trim().isEmpty()){
-        try {
-            NaverService service = new NaverService();
-            list = service.searchKin(keyword, sort);
-        } catch(Exception e) {
-            e.printStackTrace();
+<%!
+    // [1] 데이터를 담을 단순한 클래스
+    public static class KinItem {
+        String title, link, desc;
+        public KinItem(String t, String l, String d) {
+            this.title = t; this.link = l; this.desc = d;
         }
+    }
+
+    // [2] 네이버 API 호출 함수
+    public List<KinItem> getNaverData(String keyword, String sort) {
+        // ★ API 키 입력 ★
+        String clientId = "B5Wb2Wthwb1Indh1vL8e"; 
+        String clientSecret = "2Z2ehdjBXD";       
+        
+        List<KinItem> list = new ArrayList<>();
+        if (keyword == null || keyword.trim().isEmpty()) return list;
+
+        try {
+            String apiURL = "https://openapi.naver.com/v1/search/kin.json?query=" 
+                          + URLEncoder.encode(keyword, "UTF-8") 
+                          + "&display=100&sort=" + sort;
+            
+            URL url = new URL(apiURL);
+            HttpURLConnection con = (HttpURLConnection)url.openConnection();
+            con.setRequestMethod("GET");
+            con.setRequestProperty("X-Naver-Client-Id", clientId);
+            con.setRequestProperty("X-Naver-Client-Secret", clientSecret);
+
+            BufferedReader br = new BufferedReader(new InputStreamReader(
+                (con.getResponseCode() == 200) ? con.getInputStream() : con.getErrorStream(), "UTF-8"));
+            
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = br.readLine()) != null) sb.append(line);
+            br.close();
+
+            JsonObject jsonObj = JsonParser.parseString(sb.toString()).getAsJsonObject();
+            if (jsonObj.has("items")) {
+                JsonArray items = jsonObj.getAsJsonArray("items");
+                for (JsonElement item : items) {
+                    JsonObject obj = item.getAsJsonObject();
+                    String t = obj.get("title").getAsString().replaceAll("<[^>]*>", "");
+                    String l = obj.get("link").getAsString();
+                    String d = obj.get("description").getAsString().replaceAll("<[^>]*>", "");
+                    list.add(new KinItem(t, l, d));
+                }
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+        return list;
     }
 %>
 
+<%
+    // [3] 요청 처리 (페이지 로직)
+    request.setCharacterEncoding("UTF-8");
+    String keyword = request.getParameter("keyword");
+    String sort = request.getParameter("sort");
+    String pageStr = request.getParameter("page");
+
+    if(sort == null || sort.equals("")) sort = "sim";
+    int currentPage = (pageStr != null) ? Integer.parseInt(pageStr) : 1;
+    int itemsPerPage = 12; // 12개씩 카드 보여주기
+
+    List<KinItem> list = new ArrayList<>();
+    if(keyword != null && !keyword.trim().isEmpty()){
+        list = getNaverData(keyword, sort);
+    }
+
+    int totalCount = list.size();
+    int totalPages = (int) Math.ceil((double)totalCount / itemsPerPage);
+    int startIdx = (currentPage - 1) * itemsPerPage;
+    int endIdx = Math.min(startIdx + itemsPerPage, totalCount);
+%>
+
 <!DOCTYPE html>
-<html lang="ko">
+<html>
 <head>
     <meta charset="UTF-8">
-    <title>지식iN 검색 서비스</title>
-    <link rel="stylesheet" type="text/css" href="css/style.css">
+    <title>지식인 검색</title>
+    <style>
+        body {
+            text-align: center; /* 모든 걸 가운데 정렬 */
+            background-color: #f9f9f9;
+        }
+
+        h1 { color: green; }
+
+        /* 검색창 */
+        .search-area {
+            background-color: #ddd;
+            padding: 15px;
+            border: 1px solid black;
+            width: 80%;
+            margin: 0 auto; /* 가운데 정렬 */
+        }
+
+        /* 카드들이 들어갈 공간 */
+        .card-container {
+            width: 90%;
+            margin: 20px auto;
+        }
+
+        .my-card {
+            /* 옆으로 나열하기 위해 inline-block 사용 */
+            display: inline-block;
+            width: 250px;
+            height: 200px;
+            
+            /* 직각 테두리 */
+            border: 2px solid black;
+            background-color: white;
+            
+            margin: 10px;
+            padding: 10px;
+            vertical-align: top; /* 카드 높이 맞추기 */
+            text-align: left; /* 글자는 왼쪽 정렬 */
+            
+            /* 내용 넘치면 숨김 */
+            overflow: hidden;
+        }
+
+        .card-header {
+            font-weight: bold;
+            color: green;
+            margin-bottom: 5px;
+        }
+
+        .card-title a {
+            color: blue;
+            text-decoration: underline; /* 링크 밑줄  */
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .card-desc {
+            font-size: 12px;
+            color: #555;
+            margin-top: 10px;
+        }
+
+        /* 버튼 */
+        .btn-jjim {
+            float: right; /* 오른쪽으로 붙이기 */
+            border: 1px solid black;
+            background-color: #eee;
+            cursor: pointer;
+        }
+
+        /* 페이지 번호 */
+        .page-link {
+            text-decoration: none;
+            color: black;
+            border: 1px solid black;
+            padding: 5px;
+            margin: 3px;
+            background-color: white;
+        }
+        .current-page {
+            background-color: green;
+            color: white;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="header-area">
-        <h2 style="color: #03C75A; margin-bottom: 15px;">지식iN 질문 검색</h2>
-        
-        <form action="Search.jsp" method="get" class="search-form">
-            <div class="search-box">
-                <input type="text" name="keyword" placeholder="궁금한 내용을 입력하세요" value="<%= keyword != null ? keyword : "" %>">
-                <button type="submit">검색</button>
-            </div>
-
-            <div class="filter-bar">
-                <input type="radio" id="sort_sim" name="sort" value="sim" 
-                       onchange="this.form.submit()" <%= sort.equals("sim") ? "checked" : "" %>>
-                <label for="sort_sim" class="sort-label">⚡ 정확도순</label>
-
-                <input type="radio" id="sort_date" name="sort" value="date" 
-                       onchange="this.form.submit()" <%= sort.equals("date") ? "checked" : "" %>>
-                <label for="sort_date" class="sort-label">⏰ 최신순</label>
-
-                <input type="radio" id="sort_point" name="sort" value="point" 
-                       onchange="this.form.submit()" <%= sort.equals("point") ? "checked" : "" %>>
-                <label for="sort_point" class="sort-label">🏆 평점순</label>
-            </div>
+    <h1>네이버 지식iN 검색</h1>
+    
+    <div class="search-area">
+        <form action="Search.jsp" method="get">
+            검색어: <input type="text" name="keyword" value="<%= keyword != null ? keyword : "" %>">
+            <button type="submit">검색</button>
+            <br><br>
+            <input type="radio" name="sort" value="sim" <%= sort.equals("sim")?"checked":"" %>> 정확도
+            <input type="radio" name="sort" value="date" <%= sort.equals("date")?"checked":"" %>> 최신순
+            <input type="radio" name="sort" value="point" <%= sort.equals("point")?"checked":"" %>> 평점순
         </form>
     </div>
 
-    <div class="card-grid" id="resultGrid"></div>
-    <div class="pagination" id="pagination"></div>
-</div>
+    <hr>
 
-<script>
-    const serverData = [
-        <% for(int i=0; i<list.size(); i++) { 
-            KinDTO dto = list.get(i); 
-            String safeTitle = dto.getTitle().replace("\"", "\\\"").replace("'", "\\'").replace("\n", " ");
-            String safeDesc = dto.getDescription().replace("\"", "\\\"").replace("'", "\\'").replace("\n", " ");
+    <div class="card-container">
+        <% if(list.isEmpty()) { %>
+            <h3>검색 결과가 없습니다.</h3>
+        <% } else { 
+            // 자바 for문으로 카드 반복 출력
+            for(int i = startIdx; i < endIdx; i++) {
+                KinItem item = list.get(i);
         %>
-        {
-            id: <%= i %>,
-            title: "<%= safeTitle %>",
-            desc: "<%= safeDesc %>",
-            link: "<%= dto.getLink() %>",
-            saved: false
-        }<%= i < list.size()-1 ? "," : "" %>
-        <% } %>
-    ];
-
-    let currentPage = 1;
-    const itemsPerPage = 12; 
-
-    function render() {
-        const grid = document.getElementById("resultGrid");
-        const pagination = document.getElementById("pagination");
-        
-        grid.innerHTML = "";
-        pagination.innerHTML = "";
-
-        if(serverData.length === 0) {
-            <% if(keyword != null && !keyword.isEmpty()) { %>
-                grid.innerHTML = "<div style='text-align:center; width:100%; grid-column: 1 / -1; padding:50px; color:#666;'>검색 결과가 없습니다.</div>";
-            <% } else { %>
-                grid.innerHTML = "<div style='text-align:center; width:100%; grid-column: 1 / -1; padding:50px; color:#666;'>검색어를 입력해주세요.</div>";
-            <% } %>
-            return;
-        }
-
-        const start = (currentPage - 1) * itemsPerPage;
-        const end = start + itemsPerPage;
-        const pageData = serverData.slice(start, end);
-
-        pageData.forEach(item => {
-            const heartClass = item.saved ? "btn-save active" : "btn-save";
-            
-            const cardHTML = `
-                <div class="card" onclick="window.open('\${item.link}')">
-                    <div class="\${heartClass}" onclick="toggleSave(event, \${item.id})" title="저장하기">♥</div>
-                    
-                    <div class="card-top">
-                        <span class="tag">지식iN</span>
-                    </div>
-                    
-                    <div class="card-title">\${item.title}</div>
-                    <div class="card-desc">\${item.desc}</div>
+            <div class="my-card">
+                <div class="card-header">
+                    [지식iN]
+                    <button type="button" class="btn-jjim" onclick="alert('<%= i+1 %>번 글 저장')">저장</button>
                 </div>
-            `;
-            grid.innerHTML += cardHTML;
-        });
+                <div class="card-title">
+                    <a href="<%= item.link %>" target="_blank"><%= item.title %></a>
+                </div>
+                <div class="card-desc">
+                    <%= item.desc %>
+                </div>
+            </div>
+        <% 
+            } 
+        } 
+        %>
+    </div>
 
-        const totalPages = Math.ceil(serverData.length / itemsPerPage);
-        createPageBtn("<", currentPage > 1, () => changePage(currentPage - 1));
-        let startPage = Math.max(1, currentPage - 2);
-        let endPage = Math.min(totalPages, startPage + 4);
-        for (let i = startPage; i <= endPage; i++) {
-            createPageBtn(i, true, () => changePage(i), i === currentPage);
-        }
-        createPageBtn(">", currentPage < totalPages, () => changePage(currentPage + 1));
-    }
-
-    function createPageBtn(text, enabled, onClick, isActive = false) {
-        const pagination = document.getElementById("pagination");
-        const btn = document.createElement("button");
-        btn.className = `page-btn \${isActive ? 'active' : ''}`;
-        btn.innerHTML = text;
-        btn.disabled = !enabled;
-        btn.onclick = onClick;
-        pagination.appendChild(btn);
-    }
-
-    function changePage(page) {
-        currentPage = page;
-        render();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    function toggleSave(event, id) {
-        event.stopPropagation(); 
-        const targetItem = serverData.find(item => item.id === id);
-        if(targetItem) {
-            targetItem.saved = !targetItem.saved;
-            event.currentTarget.classList.toggle("active");
-            if(targetItem.saved) {
-                alert("✅ DB 저장 요청: " + targetItem.title);
-            } else {
-                alert("❎ 저장 취소");
-            }
-        }
-    }
-
-    render();
-</script>
+    <div style="margin: 30px;">
+        <% if(totalCount > 0) { %>
+            <% for(int p = 1; p <= Math.min(totalPages, 5); p++) { 
+                String styleClass = (p == currentPage) ? "page-link current-page" : "page-link";
+            %>
+                <a href="Search.jsp?keyword=<%=keyword%>&sort=<%=sort%>&page=<%=p%>" class="<%=styleClass%>">
+                    <%= p %>
+                </a>
+            <% } %>
+        <% } %>
+    </div>
 
 </body>
 </html>
