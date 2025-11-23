@@ -3,7 +3,7 @@
 <%@ page import="com.google.gson.*" %>
 
 <%!
-    // [1] 데이터를 담을 단순한 클래스
+    // [1] 데이터 그릇
     public static class KinItem {
         String title, link, desc;
         public KinItem(String t, String l, String d) {
@@ -11,16 +11,16 @@
         }
     }
 
-    // [2] 네이버 API 호출 함수
+    // [2] API 호출 함수
     public List<KinItem> getNaverData(String keyword, String sort) {
-        // ★ API 키 입력 ★
-        String clientId = "B5Wb2Wthwb1Indh1vL8e"; 
-        String clientSecret = "2Z2ehdjBXD";       
+        String clientId = "B5Wb2Wthwb1Indh1vL8e"; // ★ 본인 키 확인
+        String clientSecret = "2Z2ehdjBXD";
         
         List<KinItem> list = new ArrayList<>();
         if (keyword == null || keyword.trim().isEmpty()) return list;
 
         try {
+            // 100개 가져오기
             String apiURL = "https://openapi.naver.com/v1/search/kin.json?query=" 
                           + URLEncoder.encode(keyword, "UTF-8") 
                           + "&display=100&sort=" + sort;
@@ -56,7 +56,7 @@
 %>
 
 <%
-    // [3] 요청 처리 (페이지 로직)
+    // [3] 페이지 설정
     request.setCharacterEncoding("UTF-8");
     String keyword = request.getParameter("keyword");
     String sort = request.getParameter("sort");
@@ -64,7 +64,9 @@
 
     if(sort == null || sort.equals("")) sort = "sim";
     int currentPage = (pageStr != null) ? Integer.parseInt(pageStr) : 1;
-    int itemsPerPage = 12; // 12개씩 카드 보여주기
+    
+    // ★ 12개씩 보기 ★
+    int itemsPerPage = 12; 
 
     List<KinItem> list = new ArrayList<>();
     if(keyword != null && !keyword.trim().isEmpty()){
@@ -82,95 +84,12 @@
 <head>
     <meta charset="UTF-8">
     <title>지식인 검색</title>
-    <style>
-        body {
-            text-align: center; /* 모든 걸 가운데 정렬 */
-            background-color: #f9f9f9;
-        }
-
-        h1 { color: green; }
-
-        /* 검색창 */
-        .search-area {
-            background-color: #ddd;
-            padding: 15px;
-            border: 1px solid black;
-            width: 80%;
-            margin: 0 auto; /* 가운데 정렬 */
-        }
-
-        /* 카드들이 들어갈 공간 */
-        .card-container {
-            width: 90%;
-            margin: 20px auto;
-        }
-
-        .my-card {
-            /* 옆으로 나열하기 위해 inline-block 사용 */
-            display: inline-block;
-            width: 250px;
-            height: 200px;
-            
-            /* 직각 테두리 */
-            border: 2px solid black;
-            background-color: white;
-            
-            margin: 10px;
-            padding: 10px;
-            vertical-align: top; /* 카드 높이 맞추기 */
-            text-align: left; /* 글자는 왼쪽 정렬 */
-            
-            /* 내용 넘치면 숨김 */
-            overflow: hidden;
-        }
-
-        .card-header {
-            font-weight: bold;
-            color: green;
-            margin-bottom: 5px;
-        }
-
-        .card-title a {
-            color: blue;
-            text-decoration: underline; /* 링크 밑줄  */
-            font-weight: bold;
-            font-size: 16px;
-        }
-
-        .card-desc {
-            font-size: 12px;
-            color: #555;
-            margin-top: 10px;
-        }
-
-        /* 버튼 */
-        .btn-jjim {
-            float: right; /* 오른쪽으로 붙이기 */
-            border: 1px solid black;
-            background-color: #eee;
-            cursor: pointer;
-        }
-
-        /* 페이지 번호 */
-        .page-link {
-            text-decoration: none;
-            color: black;
-            border: 1px solid black;
-            padding: 5px;
-            margin: 3px;
-            background-color: white;
-        }
-        .current-page {
-            background-color: green;
-            color: white;
-            font-weight: bold;
-        }
-    </style>
+    <link rel="stylesheet" type="text/css" href="css/style.css">
 </head>
 <body>
 
     <h1>네이버 지식iN 검색</h1>
-    
+
     <div class="search-area">
         <form action="Search.jsp" method="get">
             검색어: <input type="text" name="keyword" value="<%= keyword != null ? keyword : "" %>">
@@ -186,17 +105,16 @@
 
     <div class="card-container">
         <% if(list.isEmpty()) { %>
-            <h3>검색 결과가 없습니다.</h3>
+            <h3><%= (keyword==null)?"검색어를 입력하세요":"결과가 없습니다" %></h3>
         <% } else { 
-            // 자바 for문으로 카드 반복 출력
             for(int i = startIdx; i < endIdx; i++) {
                 KinItem item = list.get(i);
         %>
             <div class="my-card">
-                <div class="card-header">
-                    [지식iN]
-                    <button type="button" class="btn-jjim" onclick="alert('<%= i+1 %>번 글 저장')">저장</button>
-                </div>
+                <button type="button" class="btn-jjim" onclick="doSave('<%= i+1 %>')">저장</button>
+                
+                <div class="card-header">[지식iN]</div>
+                
                 <div class="card-title">
                     <a href="<%= item.link %>" target="_blank"><%= item.title %></a>
                 </div>
@@ -210,17 +128,22 @@
         %>
     </div>
 
-    <div style="margin: 30px;">
-        <% if(totalCount > 0) { %>
-            <% for(int p = 1; p <= Math.min(totalPages, 5); p++) { 
+    <div class="page-area">
+        <% if(totalCount > 0) { 
+            for(int p = 1; p <= Math.min(totalPages, 10); p++) { 
                 String styleClass = (p == currentPage) ? "page-link current-page" : "page-link";
-            %>
-                <a href="Search.jsp?keyword=<%=keyword%>&sort=<%=sort%>&page=<%=p%>" class="<%=styleClass%>">
-                    <%= p %>
-                </a>
-            <% } %>
-        <% } %>
+        %>
+            <a href="Search.jsp?keyword=<%=keyword%>&sort=<%=sort%>&page=<%=p%>" class="<%=styleClass%>">
+                <%= p %>
+            </a>
+        <% } } %>
     </div>
+
+    <script>
+        function doSave(idx) {
+            alert(idx + "번 게시물 저장");
+        }
+    </script>
 
 </body>
 </html>

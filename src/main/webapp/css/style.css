@@ -1,0 +1,106 @@
+@charset "UTF-8";
+
+/* 전체 배경 및 폰트 */
+body {
+    text-align: center; 
+    background-color: #f9f9f9;
+    font-family: sans-serif;
+}
+
+/* 제목 색상 (초록색) */
+h1 {
+    color: green;
+}
+
+/* 검색창 영역 (단순한 회색 박스) */
+.search-area {
+    background-color: #eee;
+    padding: 15px;
+    border: 1px solid black;
+    width: 80%;
+    margin: 0 auto; /* 중앙 정렬 */
+}
+
+/* 카드들이 들어갈 공간 */
+.card-container {
+    width: 95%;
+    margin: 20px auto;
+}
+
+/* 카드 디자인 ★ */
+.my-card {
+    /* 옆으로 나열 (inline-block) */
+    display: inline-block;
+    width: 300px;
+    height: 200px;
+    
+    /* 직각 검은 테두리 */
+    border: 2px solid black;
+    background-color: white;
+    
+    margin: 10px;
+    padding: 10px;
+    vertical-align: top; /* 높이 맞추기 */
+    text-align: left;    /* 글자는 왼쪽 정렬 */
+    
+    overflow: hidden;    /* 내용 넘치면 숨김 */
+    position: relative;  /* ★ 저장 버튼 위치 잡기 위해 필수  */
+}
+
+/* 카드 헤더 (지식iN 글자) */
+.card-header {
+    color: green;
+    font-weight: bold;
+    margin-bottom: 5px;
+    margin-right: 50px; /* 버튼이랑 안 겹치게 여백 */
+}
+
+/* 카드 제목 (파란색 링크) */
+.card-title a {
+    color: blue;
+    text-decoration: underline;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+/* 카드 내용 */
+.card-desc {
+    font-size: 12px;
+    color: #555;
+    margin-top: 5px;
+}
+
+/* ★ 저장 버튼 (오른쪽 위 구석 고정) ★ */
+.btn-jjim {
+    position: absolute; /* 절대 위치 */
+    top: 10px;          /* 위에서 10px */
+    right: 10px;        /* 오른쪽에서 10px */
+    
+    background-color: #eee;
+    border: 1px solid black;
+    cursor: pointer;
+    padding: 3px 8px;
+}
+
+/* 페이지 번호 영역 */
+.page-area {
+    margin: 30px;
+}
+
+/* 페이지 링크 버튼 */
+.page-link {
+    display: inline-block;
+    border: 1px solid black;
+    padding: 5px 10px;
+    margin: 3px;
+    text-decoration: none;
+    color: black;
+    background-color: white;
+}
+
+/* 현재 페이지 (초록색) */
+.current-page {
+    background-color: green;
+    color: white;
+    font-weight: bold;
+}
